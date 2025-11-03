@@ -1,0 +1,19 @@
+/* Conjoint table */
+#cj-container { max-width: 800px; margin: 0 auto 18px; font-family: inherit; }
+.cj-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.cj-head th { background: #e8f3e6; text-align: left; padding: 12px 14px; font-weight: 700; }
+.cj-row th { width: 30%; padding: 10px 14px; background: #f7f9f8; font-weight: 500; border-top: 1px solid #e4e7ea; }
+.cj-cell { padding: 10px 14px; border-top: 1px solid #e4e7ea; cursor: pointer; user-select: none; }
+.cj-cell .placeholder { opacity: .6; font-style: italic; }
+.cj-cell.revealed { font-weight: 700; }
+.cj-cell.locked { cursor: not-allowed; opacity: .45; }
+.cj-cell.blocked { cursor: not-allowed; opacity: .6; }
+.cj-cell.blocked.revealed { font-weight: 700; cursor: not-allowed; opacity: 1;  }
+.cj-cool { font-size: 13px; }
+.cj-foot { font-size: 13px; margin-top: 8px; display: flex; gap: 16px; align-items: center; }
+.cj-count { padding: 4px 8px; background:#f0f2f5; border-radius: 6px; }
+.cj-legend { opacity: .8; }
+@media (max-width: 640px) {
+  .cj-row th { width: 36%; }
+  .cj-head th, .cj-row th, .cj-cell { padding: 10px; }
+}
