@@ -8,7 +8,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     U: 2,
   };         // how many attributes to show
   var N_COLUMNS = 1;
-  var COLUMN_LABELS = ["A"];
+  var COLUMN_LABELS = ["Government attributes"];
   var MAX_CLICKS = 4;     // total reveals allowed
   var LABEL_A = "Country A";
   var LABEL_B = "Country B";
@@ -22,7 +22,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
   // For convenience, the conjoint data can be loaded from a question.
   // If not set, then the attribute pool below will be used.
-  var ATTRIBUTE_POOL_ID = 'QID3';
+  var ATTRIBUTE_POOL_PIPED = false;
 
   // Edit these pools for your attributes & levels
   var ATTRIBUTE_POOL = {
@@ -59,9 +59,9 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   };
   
   // Note the ' instead of "
-  // if (ATTRIBUTE_POOL_ID) {
-  //   ATTRIBUTE_POOL = JSON.parse('${q://' + ATTRIBUTE_POOL_ID + '/QuestionText}');
-  // }
+  if (ATTRIBUTE_POOL_PIPED) {
+    ATTRIBUTE_POOL = JSON.parse('${q://QID3/QuestionText}');
+  }
 
   // Embedded data fields
   var EMBEDDED_DATA_NAME_START_TIME = "cj_started_at";
