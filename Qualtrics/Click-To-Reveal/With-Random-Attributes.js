@@ -174,6 +174,9 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var rows = populateTableData()
   globalThis.rows = rows;
 
+  // Early storage of rows in case people drop out on this page.
+  Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify({rows: rows}));
+
   // Build table HTML
   var root = document.getElementById("cj-container");
   if (!root) { return; }
@@ -344,7 +347,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
     updateCounter();
     lockUnrevealed();
-	if (clickCount < MAX_CLICKS) { startCooldown(); }
+	  if (clickCount < MAX_CLICKS) { startCooldown(); }
   }
 
   // Bind click handlers
