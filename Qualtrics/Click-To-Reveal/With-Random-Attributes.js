@@ -4,23 +4,38 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   /* ----------- SETTINGS ----------- */
   var SETTINGS = {};
   try {
+    // TODO: Set the Question ID that contains your settings. Make sure the settings JSON is a single line (no line breaks)
     SETTINGS = JSON.parse('${q://QID3/QuestionText}');
   } catch (err) {
+    // These are the default settings in case the piped question text failed
     SETTINGS = {
+      // The number of attributes sampled from each attribute pool
       N_ROWS: {
         R: 3,
         H: 2,
         U: 3,
       },
+      // The number of values to display per attribute. A value is sampled for every column from the pool.
       N_COLUMNS: 1,
-      COLUMN_LABELS: ["Government Attributes"],
+      // The name to give the columns, amount should match N_COLUMNS
+      COLUMN_LABELS: ["Attributes"],
+      // The amount of reveals people can do, should be less or equal to the sum of N_ROWS
       MAX_CLICKS: 4,
+      // What to display before a box is revealed
       PLACEHOLDER_LABEL: "Click to reveal",
+      // What to display when the respondent runs out of clicks
       OUTOFCLICKS_LABEL: "Out of reveals!",
+      // How many seconds to wait before another box can be revealed
       COOLDOWN_SECONDS: 5,
+      // What to display to indicate how many reveals are left
       CLICKSLEFT_LABEL: "Reveals left: ",
+      // What to display to signal respondent has to wait for the cooldown to end
       COOLDOWN_LABEL: "Please wait...",
+      // Extra information to signal to the respondent
       COOLDOWN_EXTRA_LABEL: "Please wait {X} seconds before your next reveal.",
+      // Namespace for embedded data, e.g. cj_started_at
+      NAMESPACE: "cj",
+      // Pool of attributes and corresponding values. Names of this object should match those in N_ROWS
       POOL: {
         R: [
           { name: "attribute R01", values: ["value R01_1", "value R01_2", "value R01_3"] },
@@ -56,6 +71,10 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
     };
   };
+  
+  /* -------------------------------- */
+
+  var NAMESPACE = SETTINGS.NAMESPACE || "cj";
   var N_ROWS = SETTINGS.N_ROWS;         // how many attributes to show
   var N_COLUMNS = SETTINGS.N_COLUMNS;
   var COLUMN_LABELS = SETTINGS.COLUMN_LABELS;
@@ -72,20 +91,64 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   // Edit these pools for your attributes & levels
   var ATTRIBUTE_POOL = SETTINGS.POOL;
   
-  // Embedded data fields
-  var EMBEDDED_DATA_NAME_START_TIME = "cj_started_at";
-  var EMBEDDED_DATA_NAME_ASSIGNMENTS = "cj_assignments";
-  var EMBEDDED_DATA_NAME_CLICK_LOG = "cj_click_log";
-  var EMBEDDED_DATA_NAME_CLICK_COUNT = "cj_click_count";
-  var EMBEDDED_DATA_NAME_FINISHED_TIME = "cj_finished_at";
-  var EMBEDDED_DATA_CLICK_PREFIX = "cj_click_";
+  // Embedded data fields, in survey flow should be prefixed with __js_
+  var EMBEDDED_DATA_NAME_START_TIME = NAMESPACE + "_started_at";
+  var EMBEDDED_DATA_NAME_ASSIGNMENTS = NAMESPACE + "_assignments";
+  var EMBEDDED_DATA_NAME_CLICK_LOG = NAMESPACE + "_click_log";
+  var EMBEDDED_DATA_NAME_CLICK_COUNT = NAMESPACE + "_click_count";
+  var EMBEDDED_DATA_NAME_FINISHED_TIME = NAMESPACE + "_finished_at";
+  var EMBEDDED_DATA_CLICK_PREFIX = NAMESPACE + "_click_";
+  var EMBEDDED_DATA_STATUS = NAMESPACE + "_status";
 
-  /* -------------------------------- */
+  // This RNG function is stable across page refreshes. The seed is a concatenation of the ReponseId
+  // (which is random but stable during the session) and the questionId.
+  // On failure it falls back to using a random number.
+  // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
+  function initializeRNG() {
+
+    function cyrb128(str) {
+        let h1 = 1779033703, h2 = 3144134277,
+            h3 = 1013904242, h4 = 2773480762;
+        for (let i = 0, k; i < str.length; i++) {
+            k = str.charCodeAt(i);
+            h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+            h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+            h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+            h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+        }
+        h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+        h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+        h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+        h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+        h1 ^= (h2 ^ h3 ^ h4), h2 ^= h1, h3 ^= h1, h4 ^= h1;
+        return [h1>>>0, h2>>>0, h3>>>0, h4>>>0];
+    }
+
+    // Warning if this fails the randomness is different per page refresh.
+    var seedString = (Qualtrics.SurveyEngine.getJSEmbeddedData("seed") + "-" + q.questionId) || String(Math.random()); 
+    console.log("seed", seedString);
+    var seed = cyrb128(seedString);
+    var a = seed[0], b = seed[1], c = seed[2], d = seed[3];
+    
+    return function() {
+      a |= 0; b |= 0; c |= 0; d |= 0;
+      let t = (a + b | 0) + d | 0;
+      d = d + 1 | 0;
+      a = b ^ b >>> 9;
+      b = c + (c << 3) | 0;
+      c = (c << 21 | c >>> 11);
+      c = c + t | 0;
+      return (t >>> 0) / 4294967296;
+    }
+  }
+
+  // Fallback
+  var RNG = initializeRNG() || Math.random;
 
   function shuffle(arr) {
     var a = arr.slice(0), i, j, tmp;
     for (i = a.length - 1; i > 0; i--) {
-      j = Math.floor(Math.random() * (i + 1));
+      j = Math.floor(RNG() * (i + 1));
       tmp = a[i]; a[i] = a[j]; a[j] = tmp;
     }
     return a;
@@ -102,7 +165,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   }
   
   function sampleOne(arr) {
-    return arr[Math.floor(Math.random() * arr.length)];
+    return arr[Math.floor(RNG() * arr.length)];
   }
   function sampleOneIndex(arr) {
     var indices = [];
@@ -170,16 +233,12 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     return  rows;
   }
 
-  // Randomize attributes and candidate values
-  var rows = populateTableData()
-  globalThis.rows = rows;
-
-  // Early storage of rows in case people drop out on this page.
-  Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify({rows: rows}));
-
   // Build table HTML
   var root = document.getElementById("cj-container");
-  if (!root) { return; }
+  if (!root) { 
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_STATUS, "could not find 'cj-container' HTML element");
+    return;
+  }
 
   var clickCount = 0;
   var order = 0;
@@ -188,6 +247,10 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var cooling = false;
   var cooldownTimer = null;
   var cooldownEndTs = 0;
+
+  // Randomize attributes and candidate values
+  var rows = populateTableData();
+  globalThis.rows = rows;
 
   var html = '';
   html += '<table class="cj-table">';
@@ -223,8 +286,10 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
   // Logging state
   var startTs = (new Date()).getTime();
-  Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_START_TIME, String(startTs));
-
+  Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_START_TIME, String(startTs));
+  // Early storage of rows in case people drop out on this page.
+  Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify({rows: rows}));
+  Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_STATUS, "started");
 
 
   var countEl = document.getElementById("cj-count");
@@ -325,7 +390,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     }
     td.innerHTML = "<span>" + value + "</span>";
 
-    Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_CLICK_PREFIX + order, key);
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_CLICK_PREFIX + order, key);
 
     revealed[key] = true;
     clickCount += 1;
@@ -360,10 +425,11 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   // Persist to Embedded Data
   function persist() {
     var assignment = { rows: rows };
-    Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify(assignment));
-    Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_CLICK_LOG, JSON.stringify(clickLog));
-    Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_CLICK_COUNT, String(clickCount));
-    Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_FINISHED_TIME, String((new Date()).getTime()));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify(assignment));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_CLICK_LOG, JSON.stringify(clickLog));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_CLICK_COUNT, String(clickCount));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_FINISHED_TIME, String((new Date()).getTime()));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_STATUS, "finished");
   }
 
   Qualtrics.SurveyEngine.addOnPageSubmit(function () { persist(); });
