@@ -15,6 +15,12 @@ Qualtrics.SurveyEngine.addOnReady(function () {
         H: 2,
         U: 3,
       },
+      // If defined, will do staged randomisation and the first stage will be stored separately
+      N_ROWS_FIRST_STAGE: {
+        R: 4,
+        H: 4,
+        U: 4,
+      },
       // The number of values to display per attribute. A value is sampled for every column from the pool.
       N_COLUMNS: 1,
       // The name to give the columns, amount should match N_COLUMNS
@@ -76,6 +82,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
   var NAMESPACE = SETTINGS.NAMESPACE || "cj";
   var N_ROWS = SETTINGS.N_ROWS;         // how many attributes to show
+  var N_ROWS_FIRST_STAGE = SETTINGS.N_ROWS_FIRST_STAGE; // can be undefined
   var N_COLUMNS = SETTINGS.N_COLUMNS;
   var COLUMN_LABELS = SETTINGS.COLUMN_LABELS;
   var MAX_CLICKS = SETTINGS.MAX_CLICKS;     // total reveals allowed
@@ -90,6 +97,15 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
   // Edit these pools for your attributes & levels
   var ATTRIBUTE_POOL = SETTINGS.POOL;
+  // Enhance the attribute pool with extra info
+  Object.keys(ATTRIBUTE_POOL).forEach((k) => {
+    var values = ATTRIBUTE_POOL[k];
+    values.forEach((value, index) => {
+      value.index = index;
+      value.type = k;
+      value.id = k + "_" + index;
+    });
+  })
   
   // Embedded data fields, in survey flow should be prefixed with __js_
   var EMBEDDED_DATA_NAME_START_TIME = NAMESPACE + "_started_at";
@@ -99,6 +115,8 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var EMBEDDED_DATA_NAME_FINISHED_TIME = NAMESPACE + "_finished_at";
   var EMBEDDED_DATA_CLICK_PREFIX = NAMESPACE + "_click_";
   var EMBEDDED_DATA_STATUS = NAMESPACE + "_status";
+  var EMBEDDED_DATA_NAME_ASSIGNMENT_IDS = NAMESPACE + "_assignment_ids";
+  var EMBEDDED_DATA_NAME_FIRST_STAGE_ASSIGNMENT_IDS = NAMESPACE + "_first_stage_assignment_ids";
 
   // This RNG function is stable across page refreshes. The seed is a concatenation of the ReponseId
   // (which is random but stable during the session) and the questionId.
@@ -175,38 +193,29 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     return sampleOne(indices);
   }
 
-  function sampleWithIndex(arr, k) {
-    var result = [];
-    var indices = sampleIndicesNoReplace(arr, k);
-    for(var i = 0; i < indices.length; i++) {
-      var index = indices[i];
-      var obj = arr[index];
-      obj.index = index;
-      result.push(obj);
-    }
-    return result;
-  }
-
-  function sampleType(type) {
-    var result = sampleWithIndex(ATTRIBUTE_POOL[type], N_ROWS[type]);
-    for (var i = 0; i < result.length; i ++) {
-      result[i].type = type;
-    }
-    return result;
-  }
-
   function populateTableData() {
     var chosen = [];
+    var firstStageIDs = [];
 
     var types = Object.keys(ATTRIBUTE_POOL);
     
     for (var t = 0; t < types.length; t++) {
       var type = types[t];
-      var ch = sampleType(type);
-      for (var i = 0; i < ch.length; i++) {
+      
+      var ch = shuffle(ATTRIBUTE_POOL[type]);
+
+      if (N_ROWS_FIRST_STAGE) {
+        for (var i = 0; i < N_ROWS_FIRST_STAGE[type]; i++) {
+          firstStageIDs.push(ch[i].id);
+        }
+      }
+
+      for (var i = 0; i < N_ROWS[type]; i++) {
         chosen.push(ch[i]);
       }
     }
+
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_FIRST_STAGE_ASSIGNMENT_IDS, JSON.stringify(firstStageIDs));
 
     chosen = shuffle(chosen);
     
@@ -227,6 +236,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
         values: colValues,
         type: chosen[i].type,
         index: chosen[i].index,
+        id: chosen[i].id,
       });
     }
 
@@ -289,6 +299,9 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_START_TIME, String(startTs));
   // Early storage of rows in case people drop out on this page.
   Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify({rows: rows}));
+  Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENT_IDS, JSON.stringify(
+    rows.map((r) => r.type + "_" + r.index)
+  ));
   Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_STATUS, "started");
 
 
@@ -426,6 +439,9 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   function persist() {
     var assignment = { rows: rows };
     Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify(assignment));
+    Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENT_IDS, JSON.stringify(
+      rows.map((r) => r.type + "_" + r.index)
+    ));
     Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_CLICK_LOG, JSON.stringify(clickLog));
     Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_CLICK_COUNT, String(clickCount));
     Qualtrics.SurveyEngine.setJSEmbeddedData(EMBEDDED_DATA_NAME_FINISHED_TIME, String((new Date()).getTime()));
