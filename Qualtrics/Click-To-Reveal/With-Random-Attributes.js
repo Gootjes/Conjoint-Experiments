@@ -2,67 +2,76 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var q = this;
 
   /* ----------- SETTINGS ----------- */
-  var N_ROWS = {
-    R: 4,
-    H: 2,
-    U: 2,
-  };         // how many attributes to show
-  var N_COLUMNS = 1;
-  var COLUMN_LABELS = ["Government attributes"];
-  var MAX_CLICKS = 4;     // total reveals allowed
-  var LABEL_A = "Country A";
-  var LABEL_B = "Country B";
-  var PLACEHOLDER = "Click to reveal"; // TODO: import this from a localized question
-  var COOLDOWN_SEC = 2;   // ← set your X seconds here (0 disables cooldown)
+  var SETTINGS = {};
+  try {
+    SETTINGS = JSON.parse('${q://QID3/QuestionText}');
+  } catch (err) {
+    SETTINGS = {
+      N_ROWS: {
+        R: 3,
+        H: 2,
+        U: 3,
+      },
+      N_COLUMNS: 1,
+      COLUMN_LABELS: ["Government Attributes"],
+      MAX_CLICKS: 4,
+      PLACEHOLDER_LABEL: "Click to reveal",
+      OUTOFCLICKS_LABEL: "Out of reveals!",
+      COOLDOWN_SECONDS: 5,
+      CLICKSLEFT_LABEL: "Reveals left: ",
+      COOLDOWN_LABEL: "Please wait...",
+      COOLDOWN_EXTRA_LABEL: "Please wait {X} seconds before your next reveal.",
+      POOL: {
+        R: [
+          { name: "attribute R01", values: ["value R01_1", "value R01_2", "value R01_3"] },
+          { name: "attribute R02", values: ["value R02_1", "value R02_2", "value R02_3"] },
+          { name: "attribute R03", values: ["value R03_1", "value R03_2", "value R03_3"] },
+          { name: "attribute R04", values: ["value R04_1", "value R04_2", "value R04_3"] },
+          { name: "attribute R05", values: ["value R05_1", "value R05_2", "value R05_3"] },
+          { name: "attribute R06", values: ["value R06_1", "value R06_2", "value R06_3"] },
+          { name: "attribute R07", values: ["value R07_1", "value R07_2", "value R07_3"] },
+          { name: "attribute R08", values: ["value R08_1", "value R08_2", "value R08_3"] },
+          { name: "attribute R09", values: ["value R09_1", "value R09_2", "value R09_3"] },
+          { name: "attribute R10", values: ["value R10_1", "value R10_2", "value R10_3"] },
+          { name: "attribute R11", values: ["value R11_1", "value R11_2", "value R11_3"] },
+          { name: "attribute R12", values: ["value R12_1", "value R12_2", "value R12_3"] }
+        ],
+        H: [
+          { name: "attribute H01", values: ["value H01_1", "value H01_2", "value H01_3"] },
+          { name: "attribute H02", values: ["value H02_1", "value H02_2", "value H02_3"] },
+          { name: "attribute H03", values: ["value H03_1", "value H03_2", "value H03_3"] },
+          { name: "attribute H04", values: ["value H04_1", "value H04_2", "value H04_3"] },
+          { name: "attribute H05", values: ["value H05_1", "value H05_2", "value H05_3"] },
+          { name: "attribute H06", values: ["value H06_1", "value H06_2", "value H06_3"] }
+        ],
+        U: [
+          { name: "attribute U01", values: ["value U01_1", "value U01_2", "value U01_3"] },
+          { name: "attribute U02", values: ["value U02_1", "value U02_2", "value U02_3"] },
+          { name: "attribute U03", values: ["value U03_1", "value U03_2", "value U03_3"] },
+          { name: "attribute U04", values: ["value U04_1", "value U04_2", "value U04_3"] },
+          { name: "attribute U05", values: ["value U05_1", "value U05_2", "value U05_3"] },
+          { name: "attribute U06", values: ["value U06_1", "value U06_2", "value U06_3"] }
+        ]
+      },
 
-  var LEGEND_COUNT_LABEL = "Clicks left: ";
-  var LEGEND_ACTION_LABEL = "Reveal up to '" + MAX_CLICKS + "' items, then choose '" + LABEL_A + "' or '" + LABEL_B + "' below.";
-  var LEGEND_COOLDOWN_LABEL = "Please wait...";
-  var LEGEND_COOLDOWN_EXTRA_LABEL = "Please wait {X} seconds before your next reveal.";
+    };
+  };
+  var N_ROWS = SETTINGS.N_ROWS;         // how many attributes to show
+  var N_COLUMNS = SETTINGS.N_COLUMNS;
+  var COLUMN_LABELS = SETTINGS.COLUMN_LABELS;
+  var MAX_CLICKS = SETTINGS.MAX_CLICKS;     // total reveals allowed
+  var PLACEHOLDER = SETTINGS.PLACEHOLDER_LABEL; // TODO: import this from a localized question
+  var COOLDOWN_SEC = SETTINGS.COOLDOWN_SECONDS;   // ← set your X seconds here (0 disables cooldown)
+  var OUTOFCLICKS_LABEL  = SETTINGS.OUTOFCLICKS_LABEL ;
+  var CLICKSLEFT_LABEL = SETTINGS.CLICKSLEFT_LABEL;
 
-  // For convenience, the conjoint data can be loaded from a question.
-  // If not set, then the attribute pool below will be used.
-  var ATTRIBUTE_POOL_PIPED = false;
+  var LEGEND_COUNT_LABEL = SETTINGS.CLICKSLEFT_LABEL;
+  var COOLDOWN_LABEL = SETTINGS.COOLDOWN_LABEL;
+  var LEGEND_COOLDOWN_EXTRA_LABEL = SETTINGS.COOLDOWN_EXTRA_LABEL;
 
   // Edit these pools for your attributes & levels
-  var ATTRIBUTE_POOL = {
-    R: [
-      { name: "attribute R01", values: ["value R01_1", "value R01_2", "value R01_3"] },
-      { name: "attribute R02", values: ["value R02_1", "value R02_2", "value R02_3"] },
-      { name: "attribute R03", values: ["value R03_1", "value R03_2", "value R03_3"] },
-      { name: "attribute R04", values: ["value R04_1", "value R04_2", "value R04_3"] },
-      { name: "attribute R05", values: ["value R05_1", "value R05_2", "value R05_3"] },
-      { name: "attribute R06", values: ["value R06_1", "value R06_2", "value R06_3"] },
-      { name: "attribute R07", values: ["value R07_1", "value R07_2", "value R07_3"] },
-      { name: "attribute R08", values: ["value R08_1", "value R08_2", "value R08_3"] },
-      { name: "attribute R09", values: ["value R09_1", "value R09_2", "value R09_3"] },
-      { name: "attribute R10", values: ["value R10_1", "value R10_2", "value R10_3"] },
-      { name: "attribute R11", values: ["value R11_1", "value R11_2", "value R11_3"] },
-      { name: "attribute R12", values: ["value R12_1", "value R12_2", "value R12_3"] }
-    ],
-    H: [
-      { name: "attribute H01", values: ["value H01_1", "value H01_2", "value H01_3"] },
-      { name: "attribute H02", values: ["value H02_1", "value H02_2", "value H02_3"] },
-      { name: "attribute H03", values: ["value H03_1", "value H03_2", "value H03_3"] },
-      { name: "attribute H04", values: ["value H04_1", "value H04_2", "value H04_3"] },
-      { name: "attribute H05", values: ["value H05_1", "value H05_2", "value H05_3"] },
-      { name: "attribute H06", values: ["value H06_1", "value H06_2", "value H06_3"] }
-    ],
-    U: [
-      { name: "attribute U01", values: ["value U01_1", "value U01_2", "value U01_3"] },
-      { name: "attribute U02", values: ["value U02_1", "value U02_2", "value U02_3"] },
-      { name: "attribute U03", values: ["value U03_1", "value U03_2", "value U03_3"] },
-      { name: "attribute U04", values: ["value U04_1", "value U04_2", "value U04_3"] },
-      { name: "attribute U05", values: ["value U05_1", "value U05_2", "value U05_3"] },
-      { name: "attribute U06", values: ["value U06_1", "value U06_2", "value U06_3"] }
-    ]
-  };
+  var ATTRIBUTE_POOL = SETTINGS.POOL;
   
-  // Note the ' instead of "
-  if (ATTRIBUTE_POOL_PIPED) {
-    ATTRIBUTE_POOL = JSON.parse('${q://QID3/QuestionText}');
-  }
-
   // Embedded data fields
   var EMBEDDED_DATA_NAME_START_TIME = "cj_started_at";
   var EMBEDDED_DATA_NAME_ASSIGNMENTS = "cj_assignments";
@@ -169,6 +178,14 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var root = document.getElementById("cj-container");
   if (!root) { return; }
 
+  var clickCount = 0;
+  var order = 0;
+  var clickLog = [];          // {order, tMs, col, row, attribute, value}
+  var revealed = {};          // keys like "A-1": true
+  var cooling = false;
+  var cooldownTimer = null;
+  var cooldownEndTs = 0;
+
   var html = '';
   html += '<table class="cj-table">';
   html += '  <thead class="cj-head"><tr>';
@@ -177,7 +194,6 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     var label = COLUMN_LABELS[cl];
     html += '<th>' + COLUMN_LABELS[cl] + '</th>'; 
   }
-//  html += '    <th></th><th>' + LABEL_A + '</th><th>' + LABEL_B + '</th>';
   html += '  </tr></thead><tbody>';
 
   for (var r = 0; r < rows.length; r++) {
@@ -192,9 +208,12 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   }
   html += '  </tbody></table>';
   html += '  <div class="cj-foot">';
-  html += '    <div class="cj-count" id="cj-count">' + LEGEND_COUNT_LABEL + MAX_CLICKS + '</div>';
-  html += '    <div class="cj-legend">' + LEGEND_ACTION_LABEL + '</div>';
-  html += '    <div class="cj-cool" id="cj-cooldown" style="display:none">' + LEGEND_COOLDOWN_LABEL + '</div>';
+  html += '    <div id="cj-cooldown" style="display:table-cell;width:40px;height:40px;padding:2px;border:2px solid black;vertical-align:middle;text-align:center;border-radius:40px;">0</div>';
+  html += '    <div id="cj-count" style="display: table-cell; vertical-align: middle; padding-left: 10px;">' + CLICKSLEFT_LABEL + MAX_CLICKS + "/" + MAX_CLICKS + '</div>';
+  
+
+  // html += '    <div class="cj-legend">' + LEGEND_ACTION_LABEL + '</div>';
+  
   html += '  </div>';
 
   root.innerHTML = html;
@@ -203,18 +222,11 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   var startTs = (new Date()).getTime();
   Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_START_TIME, String(startTs));
 
-  var clickCount = 0;
-  var order = 0;
-  var clickLog = [];          // {order, tMs, col, row, attribute, value}
-  var revealed = {};          // keys like "A-1": true
+
 
   var countEl = document.getElementById("cj-count");
   var cells = root.querySelectorAll(".cj-cell");
-  
-  var cooling = false;
-  var cooldownTimer = null;
-  var cooldownEndTs = 0;
-  var coolEl = null;
+  var coolEl = document.getElementById("cj-cooldown");
   
   function setBlocked(on) {
     for (var i = 0; i < cells.length; i++) {
@@ -231,7 +243,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     if (!coolEl) return;
     var nowTs = (new Date()).getTime();
     var remain = Math.ceil((cooldownEndTs - nowTs) / 1000);
-    coolEl.textContent = LEGEND_COOLDOWN_EXTRA_LABEL.replace("{X}", (remain < 0 ? 0 : remain));
+    coolEl.textContent = remain + "s";// LEGEND_COOLDOWN_EXTRA_LABEL.replace("{X}", (remain < 0 ? 0 : remain));
   }
   
   function startCooldown() {
@@ -243,18 +255,33 @@ Qualtrics.SurveyEngine.addOnReady(function () {
     if (coolEl) { coolEl.style.display = "inline"; }
     setBlocked(true);
     updateCooldownText();
+    for (var i2 = 0; i2 < cells.length; i2++) {
+      var td = cells[i2];
+      var key = td.getAttribute("data-row") + "-" + td.getAttribute("data-col");
+      if (!revealed[key]) {
+        td.textContent = COOLDOWN_LABEL;
+      }
+    }
   
     if (cooldownTimer) { clearInterval(cooldownTimer); }
     cooldownTimer = setInterval(function () {
-  	var nowTs = (new Date()).getTime();
-  	if (nowTs >= cooldownEndTs) {
-  	  clearInterval(cooldownTimer);
-  	  cooling = false;
-  	  if (coolEl) { coolEl.style.display = "none"; }
-  	  setBlocked(false);
-  	} else {
-  	  updateCooldownText();
-  	}
+      var nowTs = (new Date()).getTime();
+      if (nowTs >= cooldownEndTs) {
+        clearInterval(cooldownTimer);
+        cooling = false;
+        if (coolEl) { coolEl.textContent = '0'; }
+        setBlocked(false);
+        for (var i2 = 0; i2 < cells.length; i2++) {
+          var td = cells[i2];
+          var key = td.getAttribute("data-row") + "-" + td.getAttribute("data-col");
+          if (!revealed[key]) {
+            td.textContent = PLACEHOLDER;
+          }
+        }
+  
+      } else {
+        updateCooldownText();
+      }
     }, 100);
   }
 
@@ -262,14 +289,17 @@ Qualtrics.SurveyEngine.addOnReady(function () {
   function updateCounter() {
     var left = MAX_CLICKS - clickCount;
     if (left < 0) { left = 0; }
-    countEl.textContent = "Clicks left: " + left;
+    countEl.textContent = CLICKSLEFT_LABEL + left + "/" + MAX_CLICKS;
   }
   function lockUnrevealed() {
     if (clickCount < MAX_CLICKS) { return; }
     for (var i2 = 0; i2 < cells.length; i2++) {
       var td = cells[i2];
       var key = td.getAttribute("data-row") + "-" + td.getAttribute("data-col");
-      if (!revealed[key]) { td.className += " locked"; }
+      if (!revealed[key]) {
+        td.className += " locked";
+        td.textContent = OUTOFCLICKS_LABEL;
+      }
     }
   }
 
@@ -326,7 +356,7 @@ Qualtrics.SurveyEngine.addOnReady(function () {
 
   // Persist to Embedded Data
   function persist() {
-    var assignment = { labelA: LABEL_A, labelB: LABEL_B, rows: rows };
+    var assignment = { rows: rows };
     Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_ASSIGNMENTS, JSON.stringify(assignment));
     Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_CLICK_LOG, JSON.stringify(clickLog));
     Qualtrics.SurveyEngine.setEmbeddedData(EMBEDDED_DATA_NAME_CLICK_COUNT, String(clickCount));
